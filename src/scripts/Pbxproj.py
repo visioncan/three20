@@ -158,16 +158,22 @@ class Pbxproj(object):
 		project_data = self.get_project_data()
 		
 		if project_data is None:
+			logging.error("Unable to load the project at this path: "+self.path())
 			return None
 
-		result = re.search('([A-Z0-9]+) \/\* '+re.escape(self.target)+' \*\/ = {\n[ \t]+isa = PBXNativeTarget;(?:.|\n)+?buildPhases = \(\n((?:.|\n)+?)\);\n(?:.|\n)+?dependencies = \(\n((?:[ \t]+[A-Z0-9]+ \/\* PBXTargetDependency \*\/,\n)*)[ \t]*\);\n(?:.|\n)+?productReference = ([A-Z0-9]+) \/\* (.+?) \*\/;',
+
+		# Get build phases
+
+		result = re.search('([A-Z0-9]+) \/\* '+re.escape(self.target)+' \*\/ = {\n[ \t]+isa = PBXNativeTarget;(?:.|\n)+?buildPhases = \(\n((?:.|\n)+?)\);',
 		                   project_data)
 	
 		if not result:
+			logging.error("Unable to get build phases from: "+self.path())
 			return None
 	
-		(self._guid, buildPhases, dependency_set, self._product_guid, self._product_name, ) = result.groups()
-		dependency_guids = re.findall('[ \t]+([A-Z0-9]+) \/\* PBXTargetDependency \*\/,\n', dependency_set)
+		(self._guid, buildPhases, ) = result.groups()
+
+		# Get the build phases we care about.
 
 		match = re.search('([A-Z0-9]+) \/\* Resources \*\/', buildPhases)
 		if match:
@@ -177,13 +183,24 @@ class Pbxproj(object):
 		
 		match = re.search('([A-Z0-9]+) \/\* Frameworks \*\/', buildPhases)
 		if not match:
-			logging.error("Couldn't find the Frameworks phase.")
+			logging.error("Couldn't find the Frameworks phase from: "+self.path())
 			return None
 
 		(self._frameworks_guid, ) = match.groups()
-		
+
+		# Get the dependencies
+
+		result = re.search(re.escape(self._guid)+' \/\* '+re.escape(self.target)+' \*\/ = {\n[ \t]+isa = PBXNativeTarget;(?:.|\n)+?dependencies = \(\n((?:[ \t]+[A-Z0-9]+ \/\* PBXTargetDependency \*\/,\n)*)[ \t]*\);\n',
+		                   project_data)
+	
 		if not result:
+			logging.error("Unable to get dependencies from: "+self.path())
 			return None
+	
+		(dependency_set, ) = result.groups()
+		dependency_guids = re.findall('[ \t]+([A-Z0-9]+) \/\* PBXTargetDependency \*\/,\n', dependency_set)
+
+		# Parse the dependencies
 
 		dependency_names = []
 
@@ -196,6 +213,18 @@ class Pbxproj(object):
 				dependency_names.append(dependency_name)
 
 		self._deps = dependency_names
+
+
+		# Get the product guid and name.
+
+		result = re.search(re.escape(self._guid)+' \/\* '+re.escape(self.target)+' \*\/ = {\n[ \t]+isa = PBXNativeTarget;(?:.|\n)+?productReference = ([A-Z0-9]+) \/\* (.+?) \*\/;',
+		                   project_data)
+	
+		if not result:
+			logging.error("Unable to get product guid from: "+self.path())
+			return None
+	
+		(self._product_guid, self._product_name, ) = result.groups()
 
 		return self._deps
 
