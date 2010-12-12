@@ -83,6 +83,11 @@ CGFloat TTToolbarHeightForOrientation(UIInterfaceOrientation orientation);
 CGFloat TTKeyboardHeightForOrientation(UIInterfaceOrientation orientation);
 
 /**
+ * @return the space between the edge of the screen and a grouped table cell. Larger on iPad.
+ */
+CGFloat TTGroupedTableCellInset();
+
+/**
  * A convenient way to show a UIAlertView with a message.
  */
 void TTAlert(NSString* message);
@@ -163,8 +168,10 @@ extern const CGFloat ttkGroupedTableCellInset;
 #define TT_TOOLBAR_HEIGHT             ttkDefaultPortraitToolbarHeight
 #define TT_LANDSCAPE_TOOLBAR_HEIGHT   ttkDefaultLandscapeToolbarHeight
 
-#define TT_KEYBOARD_HEIGHT            ttkDefaultPortraitKeyboardHeight
-#define TT_LANDSCAPE_KEYBOARD_HEIGHT  ttkDefaultLandscapeKeyboardHeight
+#define TT_KEYBOARD_HEIGHT                 ttkDefaultPortraitKeyboardHeight
+#define TT_LANDSCAPE_KEYBOARD_HEIGHT       ttkDefaultLandscapeKeyboardHeight
+#define TT_IPAD_KEYBOARD_HEIGHT            ttkDefaultPadPortraitKeyboardHeight
+#define TT_IPAD_LANDSCAPE_KEYBOARD_HEIGHT  ttkDefaultPadLandscapeKeyboardHeight
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Animation

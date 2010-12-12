@@ -20,7 +20,10 @@
 
 #import <extThree20JSON/extThree20JSON.h>
 
-static NSString* kTwitterSearchFeedFormat = @"http://search.twitter.com/search.json?q=%@";
+// Twitter search API documented here:
+// http://apiwiki.twitter.com/w/page/22554756/Twitter-Search-API-Method:-search
+static NSString* kTwitterSearchFeedFormat =
+  @"http://search.twitter.com/search.json?q=%@&rpp=%u&page=%u";
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,14 +31,18 @@ static NSString* kTwitterSearchFeedFormat = @"http://search.twitter.com/search.j
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 @implementation TTTwitterSearchFeedModel
 
-@synthesize searchQuery = _searchQuery;
-@synthesize tweets      = _tweets;
-
+@synthesize searchQuery     = _searchQuery;
+@synthesize tweets          = _tweets;
+@synthesize resultsPerPage  = _resultsPerPage;
+@synthesize finished        = _finished;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 - (id)initWithSearchQuery:(NSString*)searchQuery {
   if (self = [super init]) {
     self.searchQuery = searchQuery;
+    _resultsPerPage = 10;
+    _page = 1;
+    _tweets = [[NSMutableArray array] retain];
   }
 
   return self;
@@ -53,7 +60,16 @@ static NSString* kTwitterSearchFeedFormat = @"http://search.twitter.com/search.j
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)load:(TTURLRequestCachePolicy)cachePolicy more:(BOOL)more {
   if (!self.isLoading && TTIsStringWithAnyText(_searchQuery)) {
-    NSString* url = [NSString stringWithFormat:kTwitterSearchFeedFormat, _searchQuery];
+    if (more) {
+      _page++;
+    }
+    else {
+      _page = 1;
+      _finished = NO;
+      [_tweets removeAllObjects];
+    }
+
+    NSString* url = [NSString stringWithFormat:kTwitterSearchFeedFormat, _searchQuery, _resultsPerPage, _page];
 
     TTURLRequest* request = [TTURLRequest
                              requestWithURL: url
@@ -85,8 +101,7 @@ static NSString* kTwitterSearchFeedFormat = @"http://search.twitter.com/search.j
   [dateFormatter setTimeStyle:NSDateFormatterFullStyle];
   [dateFormatter setDateFormat:@"EEE, dd MMMM yyyy HH:mm:ss ZZ"];
 
-  TT_RELEASE_SAFELY(_tweets);
-  NSMutableArray* tweets = [[NSMutableArray alloc] initWithCapacity:[entries count]];
+  NSMutableArray* tweets = [NSMutableArray arrayWithCapacity:[entries count]];
 
   for (NSDictionary* entry in entries) {
     TTTwitterTweet* tweet = [[TTTwitterTweet alloc] init];
@@ -101,7 +116,8 @@ static NSString* kTwitterSearchFeedFormat = @"http://search.twitter.com/search.j
     [tweets addObject:tweet];
     TT_RELEASE_SAFELY(tweet);
   }
-  _tweets = tweets;
+  _finished = tweets.count < _resultsPerPage;
+  [_tweets addObjectsFromArray: tweets];
 
   TT_RELEASE_SAFELY(dateFormatter);
 
